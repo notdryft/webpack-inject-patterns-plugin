@@ -1,3 +1,4 @@
+const ejs = require('ejs');
 const fs = require('fs');
 
 function InjectPlugin(options) {
@@ -11,11 +12,14 @@ function InjectPlugin(options) {
     },
     script: function (asset) {
       return `<script type="text/javascript" src="${asset}"></script>`;
+    },
+    template: function (renderer, content, parameters) {
+      return renderer.render(content, parameters);
     }
   }, this.options.patterns || {});
 
   const selectors = Object.keys(this.options.patterns).join('|');
-  this.options.pattern = new RegExp(`(?:<!--|\\/\\*) ?(${selectors}):([a-z]+\\.[a-z]+) ?(?:-->|\\*\\/)`, 'i');
+  this.options.pattern = new RegExp(`(?:<!--|\\/\\*) ?(${selectors}):([a-z]+\\.[a-z]+)\\??([^ ]+)? ?(?:-->|\\*\\/)`, 'i');
 }
 
 InjectPlugin.prototype.apply = function (compiler) {
@@ -56,10 +60,20 @@ InjectPlugin.prototype.apply = function (compiler) {
             const fn = me.options.patterns[type];
 
             if (type === 'inline') {
-              const file = fs.readFileSync(`${me.options.context}/${asset}`, 'utf8');
-              source = source.replace(selector, file);
+              const content = fs.readFileSync(`${me.options.context}/${asset}`, 'utf8');
+              source = source.replace(selector, content);
             } else if (type === 'name' || type === 'script') {
               source = source.replace(selector, fn(assets[asset]));
+            } else if (type === 'template') {
+              const query = injects[3];
+              const parameters = query.split('&').reduce(function (acc, parameter) {
+                const split = parameter.split('=');
+                acc[split[0]] = split[1];
+                return acc;
+              }, {});
+
+              const content = fs.readFileSync(`${me.options.context}/${asset}`, 'utf8');
+              source = source.replace(selector, fn(ejs, content, parameters));
             } else {
               source = source.replace(selector, '');
             }
