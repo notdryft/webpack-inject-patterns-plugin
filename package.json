@@ -1,5 +1,5 @@
 {
-  "name": "inject-webpack-plugin",
+  "name": "inject-patterns-plugin",
   "version": "0.1.0-SNAPSHOT",
   "description": "",
   "main": "index.js",
